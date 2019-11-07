@@ -204,6 +204,7 @@ func serve(args []string) error {
 	r.Handle("/ota/enroll", enrollHandlers.OTAEnrollHandler)
 	r.Handle("/ota/phase23", enrollHandlers.OTAPhase2Phase3Handler).Methods("POST")
 	r.Handle("/scep", scepHandler)
+	r.Handle("/healthz", healthz(*flConfigPath))
 	if *flHomePage {
 		r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			io.WriteString(w, homePage)
@@ -350,4 +351,20 @@ func printExamples() {
 		micromdm serve -server-url=https://my-server-url -tls-cert tls.crt -tls-key tls.key
 		`
 	fmt.Println(exampleText)
+}
+
+func healthz(path string) http.HandlerFunc {
+	var healthy bool
+	if _, err := os.Stat(path); err == nil {
+		healthy = true
+	} else {
+		stdlog.Printf("healthcheck failed with %s\n", err)
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !healthy {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
 }
